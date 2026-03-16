@@ -29,6 +29,7 @@
 
 html {
   scroll-behavior: smooth;
+  background: #f8f4ec;
 }
 
 body {
@@ -40,6 +41,8 @@ body {
     linear-gradient(180deg, #f8f4ec 0%, #f4f0e7 52%, #f3f1eb 100%);
   color: hsl(var(--foreground));
   font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", ui-sans-serif, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a {

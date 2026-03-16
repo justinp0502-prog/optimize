@@ -24,6 +24,24 @@ Optimize is a production-minded MVP for a calm life assistant. It combines daily
 - `/api/daily-plan` generated mock daily plan payload
 - `/api/meals` generated mock meal payload
 
+## Android / installable app
+
+Optimize now includes a Progressive Web App baseline:
+
+- web app manifest
+- installable app metadata
+- generated app icons
+- lightweight service worker registration
+
+On Android:
+
+1. Open the deployed site in Chrome.
+2. Tap the browser menu.
+3. Choose `Add to Home screen` or `Install app`.
+4. Launch Optimize from the home screen like a normal app.
+
+This is the fastest way to get an Android-friendly app experience without rebuilding the product in a separate mobile stack.
+
 ## Local setup
 
 1. Install dependencies:
