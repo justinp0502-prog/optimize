@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { getDashboardData } from "@/lib/data";
 import { regenerateMeals, swapMeal } from "@/lib/actions";
+import { GroceryExport } from "@/components/grocery-export";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toTitleCase } from "@/lib/utils";
@@ -17,6 +18,17 @@ export default async function MealsPage() {
     acc[key] = acc[key] ? [...acc[key], item] : [item];
     return acc;
   }, {});
+  const groceryExportContent = [
+    `Optimize grocery list`,
+    `Week of ${format(data.weekOf ?? new Date(), "MMMM d, yyyy")}`,
+    "",
+    ...Object.entries(groceryGroups).flatMap(([category, items]) => [
+      toTitleCase(category),
+      ...items.map((item) => `- ${item.label} (${item.quantity})`),
+      "",
+    ]),
+  ].join("\n");
+  const groceryExportFileName = `optimize-grocery-list-${format(data.weekOf ?? new Date(), "yyyy-MM-dd")}.txt`;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -51,9 +63,12 @@ export default async function MealsPage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Grocery list</CardTitle>
-          <CardDescription>Categorized automatically from the current meal plan.</CardDescription>
+        <CardHeader className="gap-4">
+          <div>
+            <CardTitle className="text-2xl">Grocery list</CardTitle>
+            <CardDescription>Categorized automatically from the current meal plan.</CardDescription>
+          </div>
+          <GroceryExport content={groceryExportContent} fileName={groceryExportFileName} />
         </CardHeader>
         <CardContent className="space-y-5">
           {Object.entries(groceryGroups).map(([category, items]) => (
