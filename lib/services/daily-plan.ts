@@ -21,6 +21,7 @@ type RemainingDayContext = {
 export type KeystoneActionItem = {
   id: string;
   label: string;
+  detail?: string;
   completed: boolean;
   targetType: "goal" | "habit";
   targetLabel: string;
@@ -205,6 +206,121 @@ function generateReduceHabitAction(habit: string, currentHour: number) {
   return `Interrupt ${normalized.toLowerCase()} once before it picks up momentum`;
 }
 
+function buildGoalKeystone(goal: string, currentHour: number, index: number) {
+  const lowered = cleanPhrase(goal).toLowerCase();
+  const subject = stripLeadVerb(goal);
+  const phase = getDayPhase(currentHour);
+
+  if (/(child|daughter|son|family|home)/i.test(lowered)) {
+    return {
+      label: phase === "evening" ? "Set up tomorrow's family environment" : "Do one family-supporting reset",
+      detail:
+        phase === "evening"
+          ? `Pick one concrete reset for ${subject}: tidy one play area, prep tomorrow's bag, or set out one activity. Keep it to 10-15 minutes.`
+          : `Choose one visible action for ${subject}: clean one surface, prep one item, or finish one small task that reduces stress later.`,
+    };
+  }
+
+  if (/(ship|launch|publish|release|design|portfolio|product|website|app|redesign|ui|ux)/i.test(lowered)) {
+    return {
+      label: phase === "morning" ? "Finish one focused work block" : "Move the main project one step forward",
+      detail: `Open ${subject}, choose one task you can finish in 25-45 minutes, and stop after that deliverable is done.`,
+    };
+  }
+
+  if (/(energy|health|sleep|fitness|body|wellness)/i.test(lowered)) {
+    return {
+      label: "Protect your energy on purpose",
+      detail: "Choose one reset right now: eat something solid, take a 10-minute walk, drink water, or stop for a short rest.",
+    };
+  }
+
+  if (/(confidence|self-trust|discipline|consistency|momentum)/i.test(lowered)) {
+    return {
+      label: "Keep one small promise to yourself",
+      detail: `Pick one specific action tied to ${subject} and finish it fully before switching to something else.`,
+    };
+  }
+
+  if (/(write|draft|newsletter|essay|content)/i.test(lowered)) {
+    return {
+      label: "Write one usable section",
+      detail: `Open ${subject} and draft one paragraph, section, or outline chunk in one sitting. Do not aim for perfect.`,
+    };
+  }
+
+  return {
+    label: generateGoalActionForPhase(goal, currentHour, index),
+    detail: `Choose one next step for ${subject} that can be completed in under 30 minutes, then do only that step.`,
+  };
+}
+
+function buildBuildHabitKeystone(habit: string, currentHour: number) {
+  const lowered = cleanPhrase(habit).toLowerCase();
+  const normalized = cleanPhrase(habit);
+  const phase = getDayPhase(currentHour);
+
+  if (/(sunlight|outside|walk)/i.test(lowered)) {
+    return {
+      label: phase === "morning" ? "Get outside briefly" : "Create a walk window",
+      detail:
+        phase === "morning"
+          ? `Step outside for 5-10 minutes with no phone if possible. The goal is simply to make ${normalized.toLowerCase()} happen.`
+          : `Put a short walk on the calendar or go for 10 minutes after your next transition.`,
+    };
+  }
+
+  if (/(protein|breakfast|meal|eat)/i.test(lowered)) {
+    return {
+      label: phase === "evening" ? "Prep the next meal" : "Make the next meal intentional",
+      detail:
+        phase === "evening"
+          ? `Set out one easy protein option for tomorrow morning or prep one ingredient tonight.`
+          : `Before you eat again, decide what the meal will be and make sure it includes protein.`,
+    };
+  }
+
+  if (/(reset|tidy|journal|plan|prepare)/i.test(lowered)) {
+    return {
+      label: "Do a 10-minute reset",
+      detail: `Set a timer for 10 minutes and use it only for ${normalized.toLowerCase()}. Stop when the timer ends.`,
+    };
+  }
+
+  return {
+    label: generateBuildHabitAction(habit, currentHour),
+    detail: `Pick the easiest moment today to make ${normalized.toLowerCase()} real, even if it is only for 5-10 minutes.`,
+  };
+}
+
+function buildReduceHabitKeystone(habit: string, currentHour: number) {
+  const lowered = cleanPhrase(habit).toLowerCase();
+  const normalized = cleanPhrase(habit);
+  const phase = getDayPhase(currentHour);
+
+  if (/(scroll|phone|social|screen)/i.test(lowered)) {
+    return {
+      label: "Create one phone boundary",
+      detail:
+        phase === "morning"
+          ? `Put the phone in another room or turn on Focus mode for your next work block.`
+          : `Charge the phone away from the bed or set a Do Not Disturb cutoff for tonight.`,
+    };
+  }
+
+  if (/(snack|sugar|junk|late night)/i.test(lowered)) {
+    return {
+      label: "Remove one trigger",
+      detail: `Move the trigger food out of reach, throw it away, or replace it with one easier option before tonight.`,
+    };
+  }
+
+  return {
+    label: generateReduceHabitAction(habit, currentHour),
+    detail: `Decide what usually starts ${normalized.toLowerCase()}, then block that first trigger once today.`,
+  };
+}
+
 function getBlockStatus(currentHour: number, startHour: number, endHour: number) {
   if (currentHour >= endHour) {
     return "passed";
@@ -230,14 +346,14 @@ export function generateDailyPlan(input: DailyPlanInput, context: RemainingDayCo
   const keystoneActions: KeystoneActionItem[] = [
     {
       id: "advance-goal",
-      label: generateGoalActionForPhase(goalA, currentHour, 0),
+      ...buildGoalKeystone(goalA, currentHour, 0),
       completed: false,
       targetType: "goal",
       targetLabel: goalA,
     },
     {
       id: "protect-habit",
-      label: generateBuildHabitAction(buildHabit, currentHour),
+      ...buildBuildHabitKeystone(buildHabit, currentHour),
       completed: false,
       targetType: "habit",
       targetLabel: buildHabit,
@@ -245,7 +361,7 @@ export function generateDailyPlan(input: DailyPlanInput, context: RemainingDayCo
     },
     {
       id: "reduce-friction",
-      label: generateReduceHabitAction(reduceHabit, currentHour),
+      ...buildReduceHabitKeystone(reduceHabit, currentHour),
       completed: false,
       targetType: "habit",
       targetLabel: reduceHabit,

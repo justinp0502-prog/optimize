@@ -114,6 +114,9 @@ export function KeystoneCard({ actions }: { actions: KeystoneActionItem[] }) {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground">{action.label}</p>
+                {action.detail ? (
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{action.detail}</p>
+                ) : null}
                 <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   {action.completed ? "Completed today" : "Tap to mark complete"}
                 </p>

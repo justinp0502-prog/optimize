@@ -87,6 +87,7 @@ function normalizeKeystoneActions(value: unknown): KeystoneActionItem[] {
       return {
         id: `legacy-${index}`,
         label: item,
+        detail: undefined,
         completed: false,
         targetType: "goal",
         targetLabel: "",
@@ -98,6 +99,7 @@ function normalizeKeystoneActions(value: unknown): KeystoneActionItem[] {
       return {
         id: String(record.id ?? `generated-${index}`),
         label: String(record.label ?? ""),
+        detail: record.detail ? String(record.detail) : undefined,
         completed: Boolean(record.completed),
         targetType: record.targetType === "habit" ? "habit" : "goal",
         targetLabel: String(record.targetLabel ?? ""),
@@ -113,6 +115,7 @@ function normalizeKeystoneActions(value: unknown): KeystoneActionItem[] {
     return {
       id: `generated-${index}`,
       label: "",
+      detail: undefined,
       completed: false,
       targetType: "goal",
       targetLabel: "",

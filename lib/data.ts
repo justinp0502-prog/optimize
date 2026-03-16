@@ -73,6 +73,7 @@ export async function getDashboardData() {
           ? {
               id: `legacy-${index}`,
               label: action,
+              detail: undefined,
               completed: false,
               targetType: "goal" as const,
               targetLabel: "",
