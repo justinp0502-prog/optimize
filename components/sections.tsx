@@ -113,7 +113,14 @@ export function KeystoneCard({ actions }: { actions: KeystoneActionItem[] }) {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">{action.label}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-foreground">{action.label}</p>
+                  {action.duration ? (
+                    <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      {action.duration}
+                    </span>
+                  ) : null}
+                </div>
                 {action.detail ? (
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">{action.detail}</p>
                 ) : null}

@@ -22,6 +22,7 @@ export type KeystoneActionItem = {
   id: string;
   label: string;
   detail?: string;
+  duration?: string;
   completed: boolean;
   targetType: "goal" | "habit";
   targetLabel: string;
@@ -59,6 +60,10 @@ export function generateDailyLine(input: DailyPlanInput) {
 
 function cleanPhrase(value: string) {
   return value.trim().replace(/\.$/, "");
+}
+
+function durationForMinutes(min: number, max?: number) {
+  return max ? `${min}-${max} min` : `${min} min`;
 }
 
 function stripLeadVerb(goal: string) {
@@ -218,6 +223,7 @@ function buildGoalKeystone(goal: string, currentHour: number, index: number) {
         phase === "evening"
           ? `Pick one concrete reset for ${subject}: tidy one play area, prep tomorrow's bag, or set out one activity. Keep it to 10-15 minutes.`
           : `Choose one visible action for ${subject}: clean one surface, prep one item, or finish one small task that reduces stress later.`,
+      duration: durationForMinutes(10, 15),
     };
   }
 
@@ -225,6 +231,7 @@ function buildGoalKeystone(goal: string, currentHour: number, index: number) {
     return {
       label: phase === "morning" ? "Finish one focused work block" : "Move the main project one step forward",
       detail: `Open ${subject}, choose one task you can finish in 25-45 minutes, and stop after that deliverable is done.`,
+      duration: durationForMinutes(25, 45),
     };
   }
 
@@ -232,6 +239,7 @@ function buildGoalKeystone(goal: string, currentHour: number, index: number) {
     return {
       label: "Protect your energy on purpose",
       detail: "Choose one reset right now: eat something solid, take a 10-minute walk, drink water, or stop for a short rest.",
+      duration: durationForMinutes(10),
     };
   }
 
@@ -239,6 +247,7 @@ function buildGoalKeystone(goal: string, currentHour: number, index: number) {
     return {
       label: "Keep one small promise to yourself",
       detail: `Pick one specific action tied to ${subject} and finish it fully before switching to something else.`,
+      duration: durationForMinutes(15, 20),
     };
   }
 
@@ -246,12 +255,14 @@ function buildGoalKeystone(goal: string, currentHour: number, index: number) {
     return {
       label: "Write one usable section",
       detail: `Open ${subject} and draft one paragraph, section, or outline chunk in one sitting. Do not aim for perfect.`,
+      duration: durationForMinutes(20, 30),
     };
   }
 
   return {
     label: generateGoalActionForPhase(goal, currentHour, index),
     detail: `Choose one next step for ${subject} that can be completed in under 30 minutes, then do only that step.`,
+    duration: durationForMinutes(15, 30),
   };
 }
 
@@ -267,6 +278,7 @@ function buildBuildHabitKeystone(habit: string, currentHour: number) {
         phase === "morning"
           ? `Step outside for 5-10 minutes with no phone if possible. The goal is simply to make ${normalized.toLowerCase()} happen.`
           : `Put a short walk on the calendar or go for 10 minutes after your next transition.`,
+      duration: durationForMinutes(10),
     };
   }
 
@@ -277,6 +289,7 @@ function buildBuildHabitKeystone(habit: string, currentHour: number) {
         phase === "evening"
           ? `Set out one easy protein option for tomorrow morning or prep one ingredient tonight.`
           : `Before you eat again, decide what the meal will be and make sure it includes protein.`,
+      duration: durationForMinutes(10, 15),
     };
   }
 
@@ -284,12 +297,14 @@ function buildBuildHabitKeystone(habit: string, currentHour: number) {
     return {
       label: "Do a 10-minute reset",
       detail: `Set a timer for 10 minutes and use it only for ${normalized.toLowerCase()}. Stop when the timer ends.`,
+      duration: durationForMinutes(10),
     };
   }
 
   return {
     label: generateBuildHabitAction(habit, currentHour),
     detail: `Pick the easiest moment today to make ${normalized.toLowerCase()} real, even if it is only for 5-10 minutes.`,
+    duration: durationForMinutes(5, 10),
   };
 }
 
@@ -305,6 +320,7 @@ function buildReduceHabitKeystone(habit: string, currentHour: number) {
         phase === "morning"
           ? `Put the phone in another room or turn on Focus mode for your next work block.`
           : `Charge the phone away from the bed or set a Do Not Disturb cutoff for tonight.`,
+      duration: durationForMinutes(5),
     };
   }
 
@@ -312,12 +328,14 @@ function buildReduceHabitKeystone(habit: string, currentHour: number) {
     return {
       label: "Remove one trigger",
       detail: `Move the trigger food out of reach, throw it away, or replace it with one easier option before tonight.`,
+      duration: durationForMinutes(5, 10),
     };
   }
 
   return {
     label: generateReduceHabitAction(habit, currentHour),
     detail: `Decide what usually starts ${normalized.toLowerCase()}, then block that first trigger once today.`,
+    duration: durationForMinutes(5, 10),
   };
 }
 
