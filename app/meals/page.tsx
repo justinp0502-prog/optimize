@@ -9,8 +9,28 @@ import { toTitleCase } from "@/lib/utils";
 export default async function MealsPage() {
   const data = await getDashboardData();
 
-  if (!data || !data.currentMealPlan) {
+  if (!data) {
     return null;
+  }
+
+  if (!data.currentMealPlan) {
+    return (
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-3xl">Build this week&apos;s meal plan</CardTitle>
+            <CardDescription>
+              Your profile is saved. Generate a fresh meal plan for the current week and the grocery list will appear here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={regenerateMeals}>
+              <Button>Generate week</Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const groceryGroups = data.currentMealPlan.meals.flatMap((meal) => meal.groceries).reduce<Record<string, typeof data.currentMealPlan.meals[number]["groceries"]>>((acc, item) => {

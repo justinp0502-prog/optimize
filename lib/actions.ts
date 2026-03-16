@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { startOfWeek } from "date-fns";
+import { endOfDay, endOfWeek, startOfDay, startOfWeek } from "date-fns";
 import { redirect } from "next/navigation";
 import { AssistantTone, BlockPeriod, GroceryCategory, HabitDirection } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +14,64 @@ function splitList(value: FormDataEntryValue | null) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function getTodayRange() {
+  const now = new Date();
+  return {
+    start: startOfDay(now),
+    end: endOfDay(now),
+  };
+}
+
+function getCurrentWeekRange() {
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  return {
+    start: weekStart,
+    end: endOfWeek(weekStart, { weekStartsOn: 1 }),
+  };
+}
+
+function createDailyPlanPayload(plan: ReturnType<typeof generateDailyPlan>) {
+  return {
+    date: new Date(),
+    topLine: plan.topLine,
+    keystoneActions: plan.keystoneActions as unknown as KeystoneActionItem[],
+    blocks: {
+      create: plan.blocks.map((block) => ({
+        period: block.period as BlockPeriod,
+        title: block.title,
+        summary: block.summary,
+        startTime: block.startTime,
+        endTime: block.endTime,
+      })),
+    },
+  };
+}
+
+function createMealPlanPayload(
+  generatedMeals: ReturnType<typeof generateMealPlan>,
+  weekOf: Date
+) {
+  return {
+    weekOf,
+    meals: {
+      create: generatedMeals.meals.map((meal) => ({
+        dayLabel: meal.dayLabel,
+        mealType: meal.mealType,
+        title: meal.title,
+        description: meal.description,
+        category: meal.category,
+        groceries: {
+          create: meal.groceries.map((item) => ({
+            label: item.label,
+            category: item.category as GroceryCategory,
+            quantity: item.quantity,
+          })),
+        },
+      })),
+    },
+  };
 }
 
 function inferReflectionScore({
@@ -266,18 +324,12 @@ export async function saveProfile(formData: FormData) {
       profile: true,
       goals: true,
       habits: true,
-      dailyPlans: {
-        orderBy: { date: "desc" },
-        take: 1,
-      },
-      mealPlans: {
-        orderBy: { weekOf: "desc" },
-        take: 1,
-      },
     },
   });
 
   if (refreshedUser?.profile) {
+    const todayRange = getTodayRange();
+    const currentWeekRange = getCurrentWeekRange();
     const plan = generateDailyPlan({
       name: refreshedUser.name,
       wakeTime: refreshedUser.profile.wakeTime,
@@ -293,45 +345,30 @@ export async function saveProfile(formData: FormData) {
         .map((habit) => habit.title),
       tone: refreshedUser.profile.tone,
     });
+    const todayPlan = await prisma.dailyPlan.findFirst({
+      where: {
+        userId: refreshedUser.id,
+        date: {
+          gte: todayRange.start,
+          lte: todayRange.end,
+        },
+      },
+    });
 
-    if (refreshedUser.dailyPlans[0]) {
+    if (todayPlan) {
       await prisma.dailyBlock.deleteMany({
-        where: { dailyPlanId: refreshedUser.dailyPlans[0].id },
+        where: { dailyPlanId: todayPlan.id },
       });
 
       await prisma.dailyPlan.update({
-        where: { id: refreshedUser.dailyPlans[0].id },
-        data: {
-          date: new Date(),
-          topLine: plan.topLine,
-          keystoneActions: plan.keystoneActions as unknown as KeystoneActionItem[],
-          blocks: {
-            create: plan.blocks.map((block) => ({
-              period: block.period as BlockPeriod,
-              title: block.title,
-              summary: block.summary,
-              startTime: block.startTime,
-              endTime: block.endTime,
-            })),
-          },
-        },
+        where: { id: todayPlan.id },
+        data: createDailyPlanPayload(plan),
       });
     } else {
       await prisma.dailyPlan.create({
         data: {
           userId: refreshedUser.id,
-          date: new Date(),
-          topLine: plan.topLine,
-          keystoneActions: plan.keystoneActions as unknown as KeystoneActionItem[],
-          blocks: {
-            create: plan.blocks.map((block) => ({
-              period: block.period as BlockPeriod,
-              title: block.title,
-              summary: block.summary,
-              startTime: block.startTime,
-              endTime: block.endTime,
-            })),
-          },
+          ...createDailyPlanPayload(plan),
         },
       });
     }
@@ -341,58 +378,33 @@ export async function saveProfile(formData: FormData) {
       restrictions: refreshedUser.profile.dietaryRestrictions,
       cookingStyle: refreshedUser.profile.cookingStyle,
     });
+    const currentWeekPlan = await prisma.mealPlan.findFirst({
+      where: {
+        userId: refreshedUser.id,
+        weekOf: {
+          gte: currentWeekRange.start,
+          lte: currentWeekRange.end,
+        },
+      },
+    });
 
-    if (refreshedUser.mealPlans[0]) {
+    if (currentWeekPlan) {
       await prisma.groceryItem.deleteMany({
-        where: { meal: { mealPlanId: refreshedUser.mealPlans[0].id } },
+        where: { meal: { mealPlanId: currentWeekPlan.id } },
       });
       await prisma.meal.deleteMany({
-        where: { mealPlanId: refreshedUser.mealPlans[0].id },
+        where: { mealPlanId: currentWeekPlan.id },
       });
 
       await prisma.mealPlan.update({
-        where: { id: refreshedUser.mealPlans[0].id },
-        data: {
-          weekOf: startOfWeek(new Date(), { weekStartsOn: 1 }),
-          meals: {
-            create: generatedMeals.meals.map((meal) => ({
-              dayLabel: meal.dayLabel,
-              mealType: meal.mealType,
-              title: meal.title,
-              description: meal.description,
-              category: meal.category,
-              groceries: {
-                create: meal.groceries.map((item) => ({
-                  label: item.label,
-                  category: item.category as GroceryCategory,
-                  quantity: item.quantity,
-                })),
-              },
-            })),
-          },
-        },
+        where: { id: currentWeekPlan.id },
+        data: createMealPlanPayload(generatedMeals, currentWeekRange.start),
       });
     } else {
       await prisma.mealPlan.create({
         data: {
           userId: refreshedUser.id,
-          weekOf: startOfWeek(new Date(), { weekStartsOn: 1 }),
-          meals: {
-            create: generatedMeals.meals.map((meal) => ({
-              dayLabel: meal.dayLabel,
-              mealType: meal.mealType,
-              title: meal.title,
-              description: meal.description,
-              category: meal.category,
-              groceries: {
-                create: meal.groceries.map((item) => ({
-                  label: item.label,
-                  category: item.category as GroceryCategory,
-                  quantity: item.quantity,
-                })),
-              },
-            })),
-          },
+          ...createMealPlanPayload(generatedMeals, currentWeekRange.start),
         },
       });
     }
@@ -436,10 +448,16 @@ export async function rebuildDay() {
     habitsToReduce: user.habits.filter((habit) => habit.direction === HabitDirection.REDUCE).map((habit) => habit.title),
     tone: user.profile.tone,
   });
+  const todayRange = getTodayRange();
 
   const currentPlan = await prisma.dailyPlan.findFirst({
-    where: { userId: user.id },
-    orderBy: { date: "desc" },
+    where: {
+      userId: user.id,
+      date: {
+        gte: todayRange.start,
+        lte: todayRange.end,
+      },
+    },
   });
 
   if (currentPlan) {
@@ -454,36 +472,15 @@ export async function rebuildDay() {
     await prisma.dailyPlan.update({
       where: { id: currentPlan.id },
       data: {
-        date: new Date(),
-        topLine: plan.topLine,
+        ...createDailyPlanPayload(plan),
         keystoneActions: mergedKeystoneActions as unknown as KeystoneActionItem[],
-        blocks: {
-          create: plan.blocks.map((block) => ({
-            period: block.period as BlockPeriod,
-            title: block.title,
-            summary: block.summary,
-            startTime: block.startTime,
-            endTime: block.endTime,
-          })),
-        },
       },
     });
   } else {
     await prisma.dailyPlan.create({
       data: {
         userId: user.id,
-        date: new Date(),
-        topLine: plan.topLine,
-        keystoneActions: plan.keystoneActions as unknown as KeystoneActionItem[],
-        blocks: {
-          create: plan.blocks.map((block) => ({
-            period: block.period as BlockPeriod,
-            title: block.title,
-            summary: block.summary,
-            startTime: block.startTime,
-            endTime: block.endTime,
-          })),
-        },
+        ...createDailyPlanPayload(plan),
       },
     });
   }
@@ -532,8 +529,13 @@ export async function toggleKeystoneAction(formData: FormData) {
   }
 
   const plan = await prisma.dailyPlan.findFirst({
-    where: { userId },
-    orderBy: { date: "desc" },
+    where: {
+      userId,
+      date: {
+        gte: getTodayRange().start,
+        lte: getTodayRange().end,
+      },
+    },
   });
 
   if (!plan) {
@@ -646,11 +648,17 @@ export async function regenerateMeals() {
     restrictions: user.profile.dietaryRestrictions,
     cookingStyle: user.profile.cookingStyle,
   });
+  const currentWeekRange = getCurrentWeekRange();
 
   const existingPlan = await prisma.mealPlan.findFirst({
-    where: { userId: user.id },
+    where: {
+      userId: user.id,
+      weekOf: {
+        gte: currentWeekRange.start,
+        lte: currentWeekRange.end,
+      },
+    },
     include: { meals: { include: { groceries: true } } },
-    orderBy: { weekOf: "desc" },
   });
 
   if (existingPlan) {
@@ -661,47 +669,13 @@ export async function regenerateMeals() {
 
     await prisma.mealPlan.update({
       where: { id: existingPlan.id },
-      data: {
-        weekOf: startOfWeek(new Date(), { weekStartsOn: 1 }),
-        meals: {
-          create: generated.meals.map((meal) => ({
-            dayLabel: meal.dayLabel,
-            mealType: meal.mealType,
-            title: meal.title,
-            description: meal.description,
-            category: meal.category,
-            groceries: {
-              create: meal.groceries.map((item) => ({
-                label: item.label,
-                category: item.category as GroceryCategory,
-                quantity: item.quantity,
-              })),
-            },
-          })),
-        },
-      },
+      data: createMealPlanPayload(generated, currentWeekRange.start),
     });
   } else {
     await prisma.mealPlan.create({
       data: {
         userId: user.id,
-        weekOf: startOfWeek(new Date(), { weekStartsOn: 1 }),
-        meals: {
-          create: generated.meals.map((meal) => ({
-            dayLabel: meal.dayLabel,
-            mealType: meal.mealType,
-            title: meal.title,
-            description: meal.description,
-            category: meal.category,
-            groceries: {
-              create: meal.groceries.map((item) => ({
-                label: item.label,
-                category: item.category as GroceryCategory,
-                quantity: item.quantity,
-              })),
-            },
-          })),
-        },
+        ...createMealPlanPayload(generated, currentWeekRange.start),
       },
     });
   }

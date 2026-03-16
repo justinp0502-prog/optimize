@@ -1,4 +1,4 @@
-import { startOfWeek } from "date-fns";
+import { endOfDay, endOfWeek, startOfDay, startOfWeek } from "date-fns";
 import { HabitDirection } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -41,7 +41,7 @@ export async function getPrimaryUser() {
           },
         },
         orderBy: { weekOf: "desc" },
-        take: 1,
+        take: 8,
       },
       nudgePreference: true,
     },
@@ -55,8 +55,15 @@ export async function getDashboardData() {
     return null;
   }
 
-  const todayPlan = user.dailyPlans[0];
-  const currentMealPlan = user.mealPlans[0];
+  const now = new Date();
+  const todayStart = startOfDay(now);
+  const todayEnd = endOfDay(now);
+  const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+  const todayPlan = user.dailyPlans.find((plan) => plan.date >= todayStart && plan.date <= todayEnd);
+  const currentMealPlan = user.mealPlans.find(
+    (mealPlan) => mealPlan.weekOf >= currentWeekStart && mealPlan.weekOf <= currentWeekEnd
+  );
   const orderedMeals = currentMealPlan
     ? [...currentMealPlan.meals].sort(
         (a, b) => weekdayOrder.indexOf(a.dayLabel) - weekdayOrder.indexOf(b.dayLabel)

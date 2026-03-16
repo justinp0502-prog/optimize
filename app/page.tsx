@@ -16,7 +16,7 @@ function parseTimeToHour(time: string) {
 export default async function HomePage() {
   const data = await getDashboardData();
 
-  if (!data || !data.todayPlan) {
+  if (!data) {
     return (
       <div className="grid gap-6">
         <Card>
@@ -28,6 +28,29 @@ export default async function HomePage() {
             <Button asChild>
               <Link href="/onboarding">Go to onboarding</Link>
             </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!data.todayPlan) {
+    return (
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Build today&apos;s plan</CardTitle>
+            <CardDescription>
+              Your profile is saved. Generate a fresh plan for today instead of going back through onboarding.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={rebuildDay}>
+              <Button>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Build today
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>
