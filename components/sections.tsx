@@ -47,6 +47,8 @@ export function TimelineCard({
   endTime: string;
   status: "passed" | "active" | "upcoming";
 }) {
+  const [overview, ...actions] = summary.split("\n").filter(Boolean);
+
   return (
     <Card
       className={
@@ -76,8 +78,18 @@ export function TimelineCard({
           </span>
         </div>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm leading-7 text-muted-foreground">{summary}</p>
+      <CardContent className="space-y-3">
+        <p className="text-sm leading-7 text-muted-foreground">{overview}</p>
+        {actions.length ? (
+          <div className="space-y-2">
+            {actions.map((action) => (
+              <div key={action} className="flex gap-2 text-sm leading-6 text-foreground">
+                <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
+                <p>{action.replace(/^- /, "")}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

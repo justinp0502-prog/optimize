@@ -66,6 +66,17 @@ function durationForMinutes(min: number, max?: number) {
   return max ? `${min}-${max} min` : `${min} min`;
 }
 
+function splitSignals(value: string) {
+  return value
+    .split(/[\n,;]+/)
+    .map((item) => cleanPhrase(item))
+    .filter(Boolean);
+}
+
+function firstMeaningfulSignal(value: string, fallback: string) {
+  return splitSignals(value)[0] ?? fallback;
+}
+
 function stripLeadVerb(goal: string) {
   return cleanPhrase(goal)
     .replace(/^(ship|stabilize|rebuild|build|launch|finish|improve|create|organize|reduce|fix|write|plan)\s+/i, "")
@@ -351,6 +362,139 @@ function getBlockStatus(currentHour: number, startHour: number, endHour: number)
   return "upcoming";
 }
 
+function joinBlockSummary(overview: string, actions: string[]) {
+  return [overview, ...actions.map((action) => `- ${action}`)].join("\n");
+}
+
+function buildMorningBlock({
+  input,
+  goal,
+  buildHabit,
+  status,
+}: {
+  input: DailyPlanInput;
+  goal: string;
+  buildHabit: string;
+  status: "passed" | "active" | "upcoming";
+}) {
+  const responsibility = firstMeaningfulSignal(input.responsibilities, "the first important responsibility");
+
+  if (status === "passed") {
+    return joinBlockSummary(
+      "The morning window has mostly passed. Keep the day recoverable instead of replaying the miss.",
+      [
+        "Choose the one morning habit that still matters most and do it in stripped-down form now.",
+        `Restart with the clearest next move on ${stripLeadVerb(goal).toLowerCase() || "your main priority"}.`,
+        `Make ${responsibility.toLowerCase()} visible so the rest of the day is not reactive.`,
+      ]
+    );
+  }
+
+  return joinBlockSummary(
+    "Use the opening block to stabilize energy and start one meaningful thing before the day fragments.",
+    [
+      `Get light, water, and one real meal or snack in place within 30 minutes of waking at ${input.wakeTime}.`,
+      `Make ${cleanPhrase(buildHabit).toLowerCase()} real early in the easiest possible version.`,
+      `Start one focused block on ${stripLeadVerb(goal).toLowerCase() || "your main priority"} before checking low-value inputs.`,
+    ]
+  );
+}
+
+function buildMiddayBlock({
+  input,
+  goal,
+  buildHabit,
+  reduceHabit,
+  status,
+}: {
+  input: DailyPlanInput;
+  goal: string;
+  buildHabit: string;
+  reduceHabit: string;
+  status: "passed" | "active" | "upcoming";
+}) {
+  const responsibility = firstMeaningfulSignal(input.responsibilities, "your responsibilities");
+
+  if (status === "passed") {
+    return joinBlockSummary(
+      "Midday is behind you. Use the next transition to steady the day instead of forcing output.",
+      [
+        "Eat something simple and protein-forward before you ask for more focus.",
+        `Pick one unfinished obligation from ${responsibility.toLowerCase()} and reduce it to one clear next step.`,
+        `Interrupt ${cleanPhrase(reduceHabit).toLowerCase()} once before the afternoon drift grows.`,
+      ]
+    );
+  }
+
+  return joinBlockSummary(
+    "Midday should protect energy, clear mental clutter, and set up a believable afternoon.",
+    [
+      "Eat before you are depleted and keep the meal boring enough that it is easy to follow through.",
+      `Take a 5-10 minute reset after food so ${cleanPhrase(buildHabit).toLowerCase()} has a real chance later.`,
+      `Decide what “done enough” looks like for ${stripLeadVerb(goal).toLowerCase() || "the next work block"} before you re-enter work.`,
+    ]
+  );
+}
+
+function buildAfternoonBlock({
+  input,
+  goal,
+  reduceHabit,
+  status,
+}: {
+  input: DailyPlanInput;
+  goal: string;
+  reduceHabit: string;
+  status: "passed" | "active" | "upcoming";
+}) {
+  const priority = firstMeaningfulSignal(input.priorities, stripLeadVerb(goal) || "your main priority");
+
+  if (status === "passed") {
+    return joinBlockSummary(
+      "The main work window is mostly gone. Stop expanding the day and close what still matters.",
+      [
+        `Pick one loose end tied to ${priority.toLowerCase()} and finish or consciously defer it.`,
+        "Send the one message or update that prevents tomorrow from starting messy.",
+        `Create one boundary against ${cleanPhrase(reduceHabit).toLowerCase()} before the evening slide begins.`,
+      ]
+    );
+  }
+
+  return joinBlockSummary(
+    "This block should carry the day’s main output, not extra browsing, planning, or false urgency.",
+    [
+      `Choose one deliverable for ${stripLeadVerb(goal).toLowerCase() || priority.toLowerCase()} and work until that piece is actually finished.`,
+      `Batch the reactive work from ${priority.toLowerCase()} into one contained window instead of scattering it everywhere.`,
+      `Put one guardrail around ${cleanPhrase(reduceHabit).toLowerCase()} before you lose the best remaining attention.`,
+    ]
+  );
+}
+
+function buildEveningBlock({
+  input,
+  goal,
+  buildHabit,
+  status,
+}: {
+  input: DailyPlanInput;
+  goal: string;
+  buildHabit: string;
+  status: "passed" | "active" | "upcoming";
+}) {
+  const priority = firstMeaningfulSignal(input.priorities, stripLeadVerb(goal) || "tomorrow");
+
+  return joinBlockSummary(
+    status === "active"
+      ? "Use the evening to land well, not to squeeze a second day into one body."
+      : "The evening block should lower friction for sleep and tomorrow’s start.",
+    [
+      `Eat, reset the space, and stop carrying today's mental tabs into sleep at ${input.sleepTime}.`,
+      `Do one 10-minute setup that makes ${cleanPhrase(buildHabit).toLowerCase()} easier tomorrow.`,
+      `Close one small loop tied to ${priority.toLowerCase()} so tomorrow starts cleaner than today did.`,
+    ]
+  );
+}
+
 export function generateDailyPlan(input: DailyPlanInput, context: RemainingDayContext = {}) {
   const currentHour = context.currentHour ?? new Date().getHours();
   const goalIndex = input.goals.length ? new Date().getDate() % input.goals.length : 0;
@@ -404,44 +548,49 @@ export function generateDailyPlan(input: DailyPlanInput, context: RemainingDayCo
       {
         period: "MORNING",
         title: morningStatus === "passed" ? "Morning recap" : "Morning",
-        summary:
-          morningStatus === "passed"
-            ? `The morning window has mostly passed. Keep what worked, drop what did not, and carry only the useful part forward.`
-            : `${morningFocus} Wake at ${input.wakeTime}, get light, eat something solid, and enter the first work block clearly.`,
+        summary: buildMorningBlock({
+          input,
+          goal: goalA,
+          buildHabit,
+          status: morningStatus,
+        }),
         startTime: input.wakeTime,
         endTime: "11:30"
       },
       {
         period: "MIDDAY",
         title: middayStatus === "active" ? "Midday now" : "Midday",
-        summary:
-          middayStatus === "passed"
-            ? `Midday is behind you. Keep the rest of the day simple and avoid trying to compensate with chaos.`
-            : middayStatus === "active"
-              ? `${middayFocus} You are in the middle of the day now, so keep responsibilities visible: ${input.responsibilities}`
-              : `${middayFocus} Keep responsibilities visible: ${input.responsibilities}`,
+        summary: buildMiddayBlock({
+          input,
+          goal: goalA,
+          buildHabit,
+          reduceHabit,
+          status: middayStatus,
+        }),
         startTime: "11:30",
         endTime: "14:00"
       },
       {
         period: "AFTERNOON",
         title: afternoonStatus === "active" ? "Afternoon focus" : "Afternoon",
-        summary:
-          afternoonStatus === "passed"
-            ? `The afternoon window is mostly gone. Close loops gently and make the evening easier instead of forcing more output.`
-            : afternoonStatus === "active"
-              ? `${afternoonFocus} This is the main remaining work window. Priorities in view: ${input.priorities}`
-              : `${afternoonFocus} Priorities in view: ${input.priorities}`,
+        summary: buildAfternoonBlock({
+          input,
+          goal: goalB,
+          reduceHabit,
+          status: afternoonStatus,
+        }),
         startTime: "14:00",
         endTime: "18:00"
       },
       {
         period: "EVENING",
         title: eveningStatus === "active" ? "Evening landing" : "Evening",
-        summary:
-          eveningStatus === "active"
-            ? `${eveningFocus} Focus on recovery, food, and preparing tomorrow before sleep at ${input.sleepTime}.`
-            : `${eveningFocus} Eat, decompress, and set up tomorrow before sleep at ${input.sleepTime}.`,
+        summary: buildEveningBlock({
+          input,
+          goal: goalB,
+          buildHabit,
+          status: eveningStatus,
+        }),
         startTime: "18:00",
         endTime: input.sleepTime
       }
